@@ -1353,7 +1353,6 @@ static Image fImRead(FILE **pFid, const char FileName[])
       return NULL;
     }
   }
-  
   switch (Format)
   {
     /* Image de niveaux de gris */

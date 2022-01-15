@@ -14,18 +14,18 @@
 # Ne modifiez pas cette partie 
 # Exception : en cas de refus de l'option -Wpedantic, la remplacer par -pedantic
 CC=gcc
-CFLAGS=-Wall -Werror -Wextra -std=c99 -Wpedantic
+CFLAGS=-Wall -Wextra -std=c99 -Wpedantic
 LDFLAGS= $(CFLAGS)
 LDLIBS=-lm
 RM=rm -f
 
 # --> ci-dessous, ajoutez a la suite les noms des fichiers objets 
 # separes par un espace
-OBJECTS=limace.o monprog.o
+OBJECTS=limace.o main.o
 
 # --> ci-dessous, ajoutez a la suite les noms des fichiers executables 
 # separes par un espace
-EXE=monprog
+EXE=main
 
 # Ne modifiez pas cette partie
 .PHONY: all
@@ -33,14 +33,14 @@ all: $(EXE)
 
 # Dependances non implicites des executables
 OBJ=limace.o
-monprog: $(OBJ) monprog.o 
+main: $(OBJ) main.o 
 # --> ajoutez ici une ligne par programme selon le meme modele
 
 
 # Dependances non implicites des objets
 HEAD=limace.h
 limace.o: $(HEAD)
-monprog.o: $(HEAD)
+main.o: $(HEAD)
 # --> ajoutez ici une ligne par programme selon le meme modele
 
 
