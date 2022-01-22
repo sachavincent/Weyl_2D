@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "limace.h": "c"
+        "limace.h": "c",
+        "cstdlib": "c"
     }
 }

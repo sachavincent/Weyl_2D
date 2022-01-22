@@ -1,17 +1,25 @@
-A = load("matrice.mx");
+pkg load image;
+close all; clear all;
+function mat = loadMXFile(fileName)
+  fileMat = double(textread(fileName));
+  sizeX = fileMat(2);
+  sizeY = fileMat(3);
+  fileMat = fileMat(4:end)';
+  if(max(fileMat) <= 255 && min(fileMat) >= 0)
+    fileMat = uint8(fileMat);
+  endif
+  mat = reshape(fileMat, [sizeY, sizeX]);
+  mat = transpose(mat);
+endfunction
+
+A2 = loadMXFile("matrice.mx");
 %A2 = double(imread("lena.jpg"));
-A2 = reshape(A, [53, 55]);
-R = load("test.mx");
-R2 = reshape(R, [55, 53]);
+R2 = loadMXFile("test.mx");
 S = integralImage(transpose(A2));
 colormap gray;
 subplot(131); imagesc(A2); title("Image");
 subplot(132); imagesc(R2); title("Image integrale");
 subplot(133); imagesc(S); title("Ref Image integrale");
-
-
-
-
 
 function J = II (I)
   ## FIXME: Can this part be more vectorized?
@@ -34,3 +42,15 @@ figure;
 colormap gray; imagesc(II(A2));
 figure;
 colormap gray; imagesc(integralImage(A2, "rotated"));
+
+
+% Disparity maps
+full = imread("allCoins.pgm");
+figure;
+colormap gray; imagesc(full);
+DispMat = loadMXFile("disparityMatrix.mx");
+colormap gray; imagesc(DispMat);
+
+% testing
+test = loadMXFile("testFindBinA.mx");
+colormap gray; imshow(test);
