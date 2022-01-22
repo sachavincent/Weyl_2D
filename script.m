@@ -15,7 +15,7 @@ endfunction
 A2 = loadMXFile("matrice.mx");
 %A2 = double(imread("lena.jpg"));
 R2 = loadMXFile("test.mx");
-S = integralImage(transpose(A2));
+S = integralImage(A2);
 colormap gray;
 subplot(131); imagesc(A2); title("Image");
 subplot(132); imagesc(R2); title("Image integrale");
@@ -54,3 +54,15 @@ colormap gray; imagesc(DispMat);
 % testing
 test = loadMXFile("testFindBinA.mx");
 colormap gray; imshow(test);
+figure;
+colormap gray; imshow(imgette);
+
+% Stereo
+imdisp0 = imread("Stereo/disp0.pgm");
+imdisp1 = imread("Stereo/disp1.pgm");
+imdisp0 = imdisp0*(255 / max(imdisp0(:)));
+imdisp1 = imdisp1*(255 / max(imdisp1(:)));
+figure;
+colormap gray; imshow(imdisp0);
+figure;
+colormap gray; imshow(imdisp1);

@@ -14,9 +14,9 @@
 # Ne modifiez pas cette partie 
 # Exception : en cas de refus de l'option -Wpedantic, la remplacer par -pedantic
 CC=gcc
-CFLAGS=-Wall -Wextra -std=c99 -Wpedantic
-LDFLAGS= $(CFLAGS)
-LDLIBS=-lm
+CFLAGS=-Wall -Wextra -std=c99 -pedantic -fopenmp
+LDFLAGS= $(CFLAGS) 
+LDLIBS=-lm 
 RM=rm -f
 
 # --> ci-dessous, ajoutez a la suite les noms des fichiers objets 
