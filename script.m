@@ -1,16 +1,5 @@
 pkg load image;
 close all; clear all;
-function mat = loadMXFile(fileName)
-  fileMat = double(textread(fileName));
-  sizeX = fileMat(2);
-  sizeY = fileMat(3);
-  fileMat = fileMat(4:end)';
-  if(max(fileMat) <= 255 && min(fileMat) >= 0)
-    fileMat = uint8(fileMat);
-  endif
-  mat = reshape(fileMat, [sizeY, sizeX]);
-  mat = transpose(mat);
-endfunction
 
 A2 = loadMXFile("matrice.mx");
 %A2 = double(imread("lena.jpg"));
@@ -36,6 +25,9 @@ function J = II (I)
   endfor
 endfunction
 
+function l = lerp(a,b,t)
+  l= a+t*(b-a);
+end
 figure;
 colormap gray; imagesc(A2);
 figure;
@@ -66,3 +58,54 @@ figure;
 colormap gray; imshow(imdisp0);
 figure;
 colormap gray; imshow(imdisp1);
+
+stereoDisp = loadMXFile("Stereo/disparity_0_7.mx");
+stereoDisp = uint8(255*(stereoDisp - min(stereoDisp(:))) / (max(stereoDisp(:)) - min(stereoDisp(:))));
+figure;colormap gray; 
+subplot(131); 
+imshow(imread("Stereo/tsukubagauche.pgm"));
+subplot(132); 
+imshow(imread("Stereo/tsukubadroite.pgm"));
+subplot(133); imshow(stereoDisp);
+
+stereoDisp = medfilt2(stereoDisp);
+q3 = quantile(stereoDisp(:), 0.9);
+
+stereoDisp_v3 = stereoDisp / q3;
+stereoDisp_v3(stereoDisp_v3 > 1) = 1;
+stereoDisp_v3 = lerp(0,255,stereoDisp_v3);
+
+figure;colormap gray; 
+imshow(uint8(stereoDisp_v3));
+
+q1 = quantile(stereoDisp(:), 0.95);
+
+stereoDisp_v2 = stereoDisp / q1;
+stereoDisp_v2 = stereoDisp_v2 * 255;
+stereoDisp_v2(stereoDisp_v2 > 255) = 255;
+stereoDisp_v2 = abs(stereoDisp_v2 - 255);
+
+figure;colormap gray;
+imshow(uint8(stereoDisp_v2));
+
+
+stereoDisp_v4 = stereoDisp ./ max(stereoDisp);
+stereoDisp_v4 = lerp(0,255,stereoDisp_v4);
+
+figure;colormap gray; 
+imshow(uint8(stereoDisp_v4));
+
+
+
+
+
+D1 = loadMXFile("Stereo/disparity_11.mx");
+figure;colormap gray;imagesc(D1);
+
+D2 = loadMXFile("Stereo/bidir.mx");
+figure;colormap gray;imagesc(D2);
+
+D3 = loadMXFile("Stereo/disparity_11_BIDIR.mx");
+D3 = double(D3);
+D3 = uint8(255*((D3 - min(D3(:))) / (max(D3(:)) - min(D3(:)))));
+figure;colormap gray;imshow(D3);

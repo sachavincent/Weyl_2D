@@ -6,9 +6,12 @@
 #include "limace.h"
 #include <assert.h>
 #include <omp.h>
+#include <sys\timeb.h>
 
 #define min(x, M) ((x) >= M ? M : x)
 #define max(x, M) ((x) < M ? M : x)
+
+int DEBUG = 1;
 
 int distance(int a, int b)
 {
@@ -43,6 +46,7 @@ Matrix GetIntegralImage(Matrix m)
 			ii[x][y] = ii[x][y - 1] + s;
 		}
 	}
+#pragma omp barrier
 	return mm;
 }
 
@@ -120,7 +124,6 @@ int WeylNorm(Matrix m)
 #pragma omp for
 	for (int x = 0; x < H; x++)
 	{
-#pragma omp for
 		for (int y = 0; y < W; y++)
 		{
 			int *allPi = WeylFourSquare(integralImage, x, y);
@@ -147,6 +150,91 @@ int WeylNorm(Matrix m)
 	return max(max(pi1, pi2), max(pi4, pi3));
 }
 
+int *WeylMinMaxOpti(int pi, int c)
+{
+	int *minMax = (int *)malloc(sizeof(int) * 2);
+	minMax[0] = max(c, c - pi);
+	minMax[1] = min(c, c - pi);
+	return minMax;
+}
+Matrix GetIntegralImageOpti(Matrix m, int *maxPerRow, int *minPerRow)
+{
+	int height = MatNbRow(m);
+	int width = MatNbCol(m);
+	int **i = MatGetInt(m);
+
+	Matrix mm = MatAlloc(Int, height, width);
+
+	int **ii = MatGetInt(mm);
+
+	ii[0][0] = i[0][0];
+	maxPerRow[0] = ii[0][0];
+	minPerRow[0] = ii[0][0];
+#pragma omp for
+	for (int x = 1; x < height; x++)
+	{
+		ii[x][0] = ii[x - 1][0] + i[x][0];
+		maxPerRow[x] = ii[x][0];
+		minPerRow[x] = ii[x][0];
+	}
+
+#pragma omp barrier
+#pragma omp for
+	for (int y = 1; y < width; y++)
+	{
+		int s = i[0][y];
+		ii[0][y] = ii[0][y - 1] + s;
+		maxPerRow[0] = max(ii[0][y], maxPerRow[0]);
+		minPerRow[0] = min(ii[0][y], minPerRow[0]);
+		for (int x = 1; x < height; x++)
+		{
+			s += i[x][y];
+			ii[x][y] = ii[x][y - 1] + s;
+			maxPerRow[x] = max(ii[x][y], maxPerRow[x]);
+			minPerRow[x] = min(ii[x][y], minPerRow[x]);
+		}
+	}
+#pragma omp barrier
+	return mm;
+}
+int WeylNormOpti(Matrix m)
+{
+	int H = MatNbRow(m);
+	int W = MatNbCol(m);
+	int *minPerRow = (int *)malloc(sizeof(int) * H);
+	int *maxPerRow = (int *)malloc(sizeof(int) * H);
+	Matrix integralImage = GetIntegralImageOpti(m, maxPerRow, minPerRow);
+
+	int **ii = MatGetInt(integralImage);
+	int minPi = INT_MAX;
+	int maxPi = INT_MIN;
+#pragma omp for
+	for (int x = 0; x < H; x++)
+	{
+		int miniRow = minPerRow[x];
+		int maxiRow = maxPerRow[x];
+		// printf("min : %d max : %d\n", miniRow, maxiRow);
+		int c = ii[x][W];
+		maxPi = max(maxPi, max(c, c - miniRow));
+		minPi = min(minPi, min(c, c - maxiRow));
+		/*
+		for (int y = 0; y < W; y++)
+		{
+			// int *allPi = WeylMinMaxOpti(ii[x][y], c);m
+			maxPi = max(maxPi, max(c, c - ii[x][y]));
+			minPi = min(minPi, min(c, c - ii[x][y]));
+			// free(allPi);
+		}
+		*/
+	}
+#pragma omp barrier
+	MatFree(&integralImage);
+	free(minPerRow);
+	free(maxPerRow);
+	// printf("Test : maxPi = %d\n", maxPi);
+	return maxPi - minPi;
+}
+
 Matrix DifferenceMatrices(Matrix A, Matrix B)
 {
 	int h = MatNbRow(B);
@@ -158,7 +246,6 @@ Matrix DifferenceMatrices(Matrix A, Matrix B)
 #pragma omp for
 	for (int i = 0; i < h; i++)
 	{
-#pragma omp for
 		for (int j = 0; j < w; j++)
 		{
 			m[i][j] = a[i][j] - b[i][j];
@@ -170,12 +257,12 @@ Matrix DifferenceMatrices(Matrix A, Matrix B)
 
 /**
  * @brief Get neighborhood pixels in Matrix centered on (xC, yC) of size neigh*neigh
- * 
+ *
  * @param M Matrix of pixels
  * @param xC center of neighborhood
  * @param yC center of neighborhood
  * @param neigh size of neighborhood (must be odd)
- * @return Matrix containing the neighborhood 
+ * @return Matrix containing the neighborhood
  */
 Matrix GetNeighborhood(Matrix M, int xC, int yC, int neigh)
 {
@@ -185,15 +272,13 @@ Matrix GetNeighborhood(Matrix M, int xC, int yC, int neigh)
 	int **m = MatGetInt(M);
 
 	int halfNeigh = neigh / 2;
-	int nbH = 0;
 
-	//printf("%d %d\n", m[xC][yC], halfNeigh);
+	// printf("%d %d\n", m[xC][yC], halfNeigh);
 	Matrix res = MatAlloc(Int, neigh, neigh);
 	int **mRes = MatGetInt(res);
 #pragma omp for
 	for (int x = xC - halfNeigh; x <= xC + halfNeigh; x++)
 	{
-#pragma omp for
 		for (int y = yC - halfNeigh; y <= yC + halfNeigh; y++)
 		{
 			int pixel = m[x][y];
@@ -205,9 +290,10 @@ Matrix GetNeighborhood(Matrix M, int xC, int yC, int neigh)
 #pragma omp barrier
 	return res;
 }
-
-Matrix Stereo(Matrix Im1, Matrix Im2, int neigh)
+Matrix Stereo(Matrix Im1, Matrix Im2, int neigh, int seuilPerc, int opti)
 {
+	assert(seuilPerc >= 0 && seuilPerc <= 100);
+
 	int width1 = MatNbCol(Im1);
 	int height1 = MatNbRow(Im1);
 	int width2 = MatNbCol(Im2);
@@ -220,15 +306,16 @@ Matrix Stereo(Matrix Im1, Matrix Im2, int neigh)
 
 	Matrix disparityMap = MatAlloc(Int, height1, width1);
 	int **mapValues = MatGetInt(disparityMap);
+	Matrix norms = MatAlloc(Int, height1, width1);
+	int **normsValues = MatGetInt(norms);
 
+	int maxValue = INT_MIN;
 	int maxNorm = INT_MIN;
-
 	Matrix toGetSize = MatAlloc(Int, neigh, neigh);
-// Parcours de Im1
-#pragma omp for
+	// Parcours de Im1
+
 	for (int x = halfNeigh; x < height1 - halfNeigh; x++)
 	{
-		printf("On est a x = %d ...\n", x);
 		Matrix *listImagettes = (Matrix *)malloc(sizeof(toGetSize) * (width1 - halfNeigh * 2));
 #pragma omp for
 		for (int y = halfNeigh; y < width1 - halfNeigh; y++)
@@ -236,62 +323,71 @@ Matrix Stereo(Matrix Im1, Matrix Im2, int neigh)
 			listImagettes[y - halfNeigh] = GetNeighborhood(Im2, x, y, neigh);
 		}
 #pragma omp barrier
-		printf("On est a calcule toutes les imagettes ...\n");
 #pragma omp for
 		for (int y = halfNeigh; y < width1 - halfNeigh; y++)
 		{
-			//int bestX;
 			int bestNorm = INT_MAX;
 			Matrix imagette = GetNeighborhood(Im1, x, y, neigh);
-// Recherche dans Im2
-#pragma omp for
+			// Recherche dans Im2
+			int bestY;
+			int distance = width1 - halfNeigh - y;
 			for (int y2 = y; y2 < width1 - halfNeigh; y2++)
 			{
 				Matrix diff = DifferenceMatrices(imagette, listImagettes[y2 - halfNeigh]);
-				int norm = WeylNorm(diff);
-				if (norm < bestNorm)
+				int norm;
+				if (opti)
+					norm = WeylNormOpti(diff);
+				else
+					norm = WeylNorm(diff);
+					
+				if (bestNorm > norm)
 				{
 					bestNorm = norm;
-					//bestX = x2;
+					bestY = y2;
 				}
-				if (maxNorm < norm)
-				{
-					maxNorm = norm;
-				}
+
 				MatFree(&diff);
 			}
 			MatFree(&imagette);
-			mapValues[x][y] = bestNorm; //abs(bestX - x);
+			normsValues[x][y] = bestNorm;
+			maxNorm = max(maxNorm, bestNorm);
+			mapValues[x][y] = (int)(255.0 * ((double)abs(bestY - y) / (double)distance));
+			if (maxValue < mapValues[x][y])
+				maxValue = mapValues[x][y];
 		}
 
 #pragma omp barrier
-		printf("On a fini de calculer toutes les normes pour ce x ...\n");
+
+#pragma omp for
 		for (int y = halfNeigh; y < width1 - halfNeigh; y++)
 		{
 			MatFree(&listImagettes[y - halfNeigh]);
 		}
-		free(listImagettes);
-		printf("On a free les imagettes\n");
-	}
 
-	printf("All norms calculated!\n");
+#pragma omp barrier
+		free(listImagettes);
+	}
+	printf("Max norm: %d, perc:%d\n", maxNorm, seuilPerc);
+	double seuil = ((double)(100 - (double)seuilPerc) / 100.0) * (double)maxNorm;
+	printf("Seuil: %f\n", seuil);
+
 #pragma omp for
-	for (int x = 0; x < width1; x++)
+	for (int x = 0; x < height1; x++)
 	{
-#pragma omp for
-		for (int y = 0; y < height1; y++)
+		for (int y = 0; y < width1; y++)
 		{
-			mapValues[x][y] = abs(255 - mapValues[x][y]);
-			mapValues[x][y] /= maxNorm; //abs(bestX - x);
+			if (normsValues[x][y] > seuil)
+				mapValues[x][y] = 0;
 		}
 	}
+
 #pragma omp barrier
+
 	return disparityMap;
 }
 
 Matrix GetSlicedDifferenceMatrix(Matrix A, int x, int y, Matrix B)
 {
-
 	int h = MatNbRow(B);
 	int w = MatNbCol(B);
 	int **m = MatGetInt(B);
@@ -301,7 +397,7 @@ Matrix GetSlicedDifferenceMatrix(Matrix A, int x, int y, Matrix B)
 #pragma omp for
 	for (int i = x; i < x + h; i++)
 	{
-#pragma omp for
+		//#pragma omp for
 		for (int j = y; j < y + w; j++)
 		{
 			m[i - x][j - y] = a[i][j] - b[i - x][j - y];
@@ -325,15 +421,15 @@ Matrix FindBInA(Matrix A, Matrix B)
 	}
 	int normMin = INT_MAX;
 	Matrix found = GetSlicedDifferenceMatrix(A, 0, 0, B);
-	//int **foundValues = MatGetInt(found);
+	// int **foundValues = MatGetInt(found);
 	Matrix disparityMatrix = MatAlloc(Int, heightA - heightB, widthA - widthB);
 	int **dm = MatGetInt(disparityMatrix);
-	//Matrix slicedA = GetSlicedMatrix(A, 0, 0, heightB, widthB);
+	// Matrix slicedA = GetSlicedMatrix(A, 0, 0, heightB, widthB);
 
 #pragma omp for
 	for (int x = 0; x < heightA - heightB; x++)
 	{
-#pragma omp for
+		////#pragma omp for
 		for (int y = 0; y < widthA - widthB; y++)
 		{
 			Matrix differenceMatrix = GetSlicedDifferenceMatrix(A, x, y, B);
@@ -354,7 +450,6 @@ Matrix FindBInA(Matrix A, Matrix B)
 	MatFree(&disparityMatrix);
 	return found;
 }
-
 Matrix transformImageToMatrix(Image *i)
 {
 	int height = ImNbRow(*i);
@@ -365,14 +460,12 @@ Matrix transformImageToMatrix(Image *i)
 #pragma omp for
 	for (int x = 0; x < height; x++)
 	{
-#pragma omp for
 		for (int y = 0; y < width; y++)
 		{
 			mi[x][y] = mat[x][y];
 		}
 	}
 #pragma omp barrier
-	MatWriteAsc(m, "testTransform.mx");
 
 	printf("Converted Image Success\n");
 	return m;
@@ -380,53 +473,73 @@ Matrix transformImageToMatrix(Image *i)
 
 int main(int argc, char *argv[])
 {
-	/*	if (argc != 2)
+	if (argc != 3)
 	{
 		printf("Error parameter");
 		return 1;
 	}
+	/*
+		Image i = ImRead(argv[1]);
+		if (i == NULL)
+		{
+			printf("Probleme lors de la lecture de l'image");
+			return 2;
+		}
+		Matrix m = transformImageToMatrix(&i);
+		//Matrix m = MatReadAsc(argv[1]);
+		if (m == NULL)
+		{
+			printf("Probleme lors de la lecture de la matrice");
+			return 2;
+		}
+		//Matrix M_IG = GetIntegralImage(m);
+		//MatWriteAsc(M_IG, "test.mx");
+		//MatWriteAsc(m,"imagetteCarre.mx");
+		//int D = WeylNorm(m);
+		//printf("Norme attendue=193917\nNorme obtenue=%d\n", D);
 
-	Image i = ImRead(argv[1]);
-	if (i == NULL)
-	{
-		printf("Probleme lors de la lecture de l'image");
-		return 2;
-	}
-	Matrix m = transformImageToMatrix(&i);
-	//Matrix m = MatReadAsc(argv[1]);
-	if (m == NULL)
-	{
-		printf("Probleme lors de la lecture de la matrice");
-		return 2;
-	}
-	//Matrix M_IG = GetIntegralImage(m);
-	//MatWriteAsc(M_IG, "test.mx");
-	//MatWriteAsc(m,"imagetteCarre.mx");
-	//int D = WeylNorm(m);
-	//printf("Norme attendue=193917\nNorme obtenue=%d\n", D);
+		//	Matrix integralImage = getIntegralImage(m);
+		//	double dist = WeylDistance(integralImage);
+		// Norme attendue = 193917
 
-	//	Matrix integralImage = getIntegralImage(m);
-	//	double dist = WeylDistance(integralImage);
-	// Norme attendue = 193917
+		Image realImage = ImRead("allCoins.pgm");
+		Matrix realM = transformImageToMatrix(&realImage);
+		FindBInA(realM, m);
+	*/
+	struct timeb start, end;
+	Matrix M = MatReadAsc("matrice.mx");
+	// Image IMMM = ImRead("Stereo/im0.pgm");
 
-	Image realImage = ImRead("allCoins.pgm");
-	Matrix realM = transformImageToMatrix(&realImage);
-	FindBInA(realM, m);
-*/
-	int maxthreads = omp_get_max_threads();
+	ftime(&start);
+	int C = WeylNorm(M);
+	ftime(&end);
+	int time_taken = (int)(1000.0 * (end.time - start.time) + (end.millitm - start.millitm));
+	if (DEBUG)
+		printf("Weyl:\n\tNorme attendue=193917\n\tNorme obtenue=%d\n\tTime taken: %dms\n\n", C, time_taken);
 
-	printf("maxthreads: %d\n", maxthreads);
-	Image IM0 = ImRead("Stereo/im0.pgm");
+	ftime(&start);
+	int D = WeylNormOpti(M);
+	ftime(&end);
+	time_taken = (int)(1000.0 * (end.time - start.time) + (end.millitm - start.millitm));
+	if (DEBUG)
+		printf("Weyl Opti:\n\tNorme attendue=193917\n\tNorme obtenue=%d\n\tTime taken: %dms\n", D, time_taken);
+
+	Image IM0 = ImRead("Stereo/imB1.pgm");
 	Matrix im0 = transformImageToMatrix(&IM0);
-	Image IM1 = ImRead("Stereo/im1.pgm");
+	Image IM1 = ImRead("Stereo/imB0.pgm");
 	Matrix im1 = transformImageToMatrix(&IM1);
 
-	Matrix stereoResult = Stereo(im0, im1, 3);
+	ftime(&start);
+	Matrix stereoResult = Stereo(im0, im1, 5, atoi(argv[1]), atoi(argv[2]));
+	ftime(&end);
+	time_taken = (int)(1000.0 * (end.time - start.time) + (end.millitm - start.millitm));
 	printf("Stereo success\n");
+	if (DEBUG)
+		printf("Stereo:\n\tMatrix [%d %d]\n\tTime taken: %dms\n", D, ImNbRow(im0),ImNbCol(im0),time_taken);
 	MatWriteAsc(stereoResult, "Stereo/dispMap.mx");
 
-	//Matrix neigh1 = GetNeighborhood(m, 5, 5, 1);
-	//MatWriteAsc(neigh1, "neigh1.mx");
-	//Matrix neigh3 = GetNeighborhood(m, 5, 5, 3);
-	//MatWriteAsc(neigh3, "neigh3.mx");
+	// Matrix neigh1 = GetNeighborhood(m, 5, 5, 1);
+	// MatWriteAsc(neigh1, "neigh1.mx");
+	// Matrix neigh3 = GetNeighborhood(m, 5, 5, 3);
+	// MatWriteAsc(neigh3, "neigh3.mx");
 }
