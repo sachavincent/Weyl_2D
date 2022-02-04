@@ -1,19 +1,5 @@
 
-#include "limace.h"
-#include <omp.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <math.h>
-#include <limits.h>
-#include <getopt.h>
-
-#define min(x, M) ((x) >= M ? M : x)
-#define max(x, M) ((x) < M ? M : x)
-
-int DEBUG = 0;
+#include "utils.h"
 
 Image TransformMatrixToImage(Matrix *m)
 {
@@ -101,20 +87,21 @@ Matrix GetIntegralImage(Matrix m)
     return mm;
 }
 
-Matrix GetSlicedDifferenceMatrix(Matrix A, int x, int y, Matrix B)
+Matrix GetSlicedDifferenceMatrix(Matrix A, int y, int x, Matrix B)
 {
     int h = MatNbRow(B);
     int w = MatNbCol(B);
-    int **m = MatGetInt(B);
-    Matrix sliced = MatAlloc(Int, h, w);
     int **a = MatGetInt(A);
-    int **b = MatGetInt(sliced);
+    int **b = MatGetInt(B);
+    Matrix sliced = MatAlloc(Int, h, w);
+    int **m = MatGetInt(sliced);
 
 #pragma omp for
     for (int i = x; i < x + h; i++)
     {
         for (int j = y; j < y + w; j++)
         {
+            // printf("F1: %d %d\n", i, j);
             m[i - x][j - y] = a[i][j] - b[i - x][j - y];
         }
     }
@@ -306,4 +293,40 @@ int WeylNormOpti(Matrix m)
     free(maxPerRow);
     // printf("Test : maxPi = %d\n", maxPi);
     return maxPi - minPi;
+}
+
+/**
+ * @brief Get neighborhood pixels in Matrix centered on (xC, yC) of size neigh*neigh
+ *
+ * @param M Matrix of pixels
+ * @param xC center of neighborhood
+ * @param yC center of neighborhood
+ * @param neigh size of neighborhood (must be odd)
+ * @return Matrix containing the neighborhood
+ */
+Matrix GetNeighborhood(Matrix M, int xC, int yC, int neigh)
+{
+    assert(neigh % 2 == 1);
+    assert(neigh > 0);
+
+    int **m = MatGetInt(M);
+
+    int halfNeigh = neigh / 2;
+
+    // printf("%d %d\n", m[xC][yC], halfNeigh);
+    Matrix res = MatAlloc(Int, neigh, neigh);
+    int **mRes = MatGetInt(res);
+#pragma omp for
+    for (int x = xC - halfNeigh; x <= xC + halfNeigh; x++)
+    {
+        for (int y = yC - halfNeigh; y <= yC + halfNeigh; y++)
+        {
+            int pixel = m[x][y];
+
+            mRes[x - (xC - halfNeigh)][y - (yC - halfNeigh)] = pixel;
+        }
+    }
+
+#pragma omp barrier
+    return res;
 }

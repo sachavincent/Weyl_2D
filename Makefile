@@ -25,7 +25,7 @@ OBJECTS=limace.o main.o Stereo.o Suivi.o Utils.o
 
 # --> ci-dessous, ajoutez a la suite les noms des fichiers executables 
 # separes par un espace
-EXE=main Stereo Suivi
+EXE=main Stereo Suivi 
 
 # Ne modifiez pas cette partie
 .PHONY: all

@@ -1,8 +1,3 @@
-#include <assert.h>
-#include <sys\timeb.h>
-#include <errno.h>
-#include <limits.h>
-
 #include "utils.c"
 
 char *directory = "Suivi";
@@ -30,8 +25,11 @@ Matrix DifferenceMatrices(Matrix A, Matrix B)
     return diff;
 }
 
-void FindBInA(Matrix A, Matrix B, int *posX, int *posY)
+void FindBInANeighborhood(Matrix A, Matrix B, int *posX, int *posY, int minFound)
 {
+    int prevX = *posX;
+    int prevY = *posY;
+
     int heightA = MatNbRow(A);
     int widthA = MatNbCol(A);
 
@@ -42,77 +40,92 @@ void FindBInA(Matrix A, Matrix B, int *posX, int *posY)
         printf("Error in findBInA, image B is larger than A\n");
         return;
     }
-    int **aValues = MatGetInt(A);
-    int normMin = INT_MAX;
+    // int **aValues = MatGetInt(A);
     int over = 1;
-    printf("B3\n");
+    int halfNeigh = 1;
+    printf("Looking at (%d, %d)\n", *posX, *posY);
 
-    for (int x = *posX - 1; x <= *posX + 1; ++x)
+    for (int x = *posX - halfNeigh; x <= *posX + halfNeigh; x++)
     {
-        for (int y = *posY - 1; y <= *posY + 1; ++y)
+        for (int y = *posY - halfNeigh; y <= *posY + halfNeigh; y++)
         {
-            if (x == *posX && y == *posY)
-                continue;
-            Matrix differenceMatrix = GetSlicedDifferenceMatrix(A, x, y, B);
+            Matrix differenceMatrix = GetSlicedDifferenceMatrix(A, x - widthB / 2 + 1, y - heightB / 2 + 1, B);
+
             int newNorm = WeylNorm(differenceMatrix);
-            if (newNorm < normMin)
+            if (newNorm < minFound)
             {
-                over = 0;
-                *posX = x;
-                *posY = y;
-                normMin = newNorm;
+                minFound = newNorm;
+                if (x != *posX || y != *posY)
+                {
+                    over = 0;
+                    *posX = x;
+                    *posY = y;
+                }
+                printf("Better norm (= %d) found at (%d, %d)\n", minFound, x, y);
             }
             MatFree(&differenceMatrix);
         }
     }
 
-    printf("B6\n");
-
-    if (over || *posX <= widthB / 2 || *posY <= heightB / 2)
+    if (!over)
     {
-        for (int x = *posX - (widthB / 2); x <= *posX + (widthB / 2); ++x)
-        {
-            for (int y = *posY - (heightB / 2); y <= *posY + (heightB / 2); ++y)
-            {
-                if (x == *posX - (widthB / 2) || x == *posX + (widthB / 2) || y == *posY - (heightB / 2) || y == *posY + (heightB / 2))
-                    aValues[y][x] = 255;
-            }
-        }
-        return;
+        printf("For pixel (%d, %d), found best at (%d, %d) min=%d\n", prevX, prevY, *posX, *posY, minFound);
+        FindBInANeighborhood(A, B, posX, posY, minFound);
     }
-    printf("B7\n");
-    FindBInA(A, B, posX, posY);
-    printf("B8\n");
+    else
+        printf("Stopped at (%d, %d)\n", *posX, *posY);
 }
 
 void Suivi(Matrix imagette, int nbFrames)
 {
+    //int x = 302 + 132 / 2;
+    //int y = 214 + 430 / 2;
+    int x = 106;
+    int y = 295;
+    int heightB = MatNbRow(imagette);
+    int widthB = MatNbCol(imagette);
     for (int i = 0; i < nbFrames; i++)
     {
+        // char *fileName = malloc(19 + 5 + 4);
+        // sprintf(fileName, "%s%d%s", "Suivi/Bike/img/frame_", (i + 1), ".pgm");
         char *fileName = malloc(19);
         sprintf(fileName, "%s%d%s", "Suivi/frame_", (i + 1), ".pgm");
         Matrix im_i = ReadMatrixFromPGM(fileName);
         if (im_i == NULL)
         {
-            printf("Stopped at frame number %d because '%s' was not found!", i, fileName);
+            printf("Stopped at frame number %d because '%s' was not found!\n", i, fileName);
             break;
         }
 
-        printf("B4\n");
-        int x = 105;
-        int y = 295;
-        FindBInA(im_i, imagette, &x, &y);
-        printf("B5\n");
+        FindBInANeighborhood(im_i, imagette, &x, &y, INT_MAX);
+        int heightIm = MatNbRow(im_i);
+        int widthIm = MatNbCol(im_i);
+
+        int **imValues = MatGetInt(im_i);
+
+#pragma omp for
+        for (int Vx = max(0, x - (widthB / 2)); Vx <= min(widthIm - 1, x + (widthB / 2)); Vx++)
+        {
+            for (int Vy = max(0, y - (heightB / 2)); Vy <= min(heightIm - 1, y + (heightB / 2)); Vy++)
+            {
+                if (Vx == x - (widthB / 2) || Vx == x + (widthB / 2) || Vy == y - (heightB / 2) || Vy == y + (heightB / 2))
+                {
+                    imValues[Vy][Vx] = 255;
+                }
+            }
+        }
 
         Image image = TransformMatrixToImage(&im_i);
+        // char *newFileName = malloc(25 + 5);
+        // sprintf(newFileName, "%s%d%s", "Suivi/Bike/suivi_frame_", (i + 1), ".pgm");
         char *newFileName = malloc(25);
         sprintf(newFileName, "%s%d%s", "Suivi/suivi_frame_", (i + 1), ".pgm");
-        printf("Successfully tracked frame %d at %s", i + 1, newFileName);
+        printf("Successfully tracked frame %d at (%d, %d) saved at %s\n", i + 1, x, y, newFileName);
         ImWriteAsc(image, newFileName);
 
         MatFree(&im_i);
         ImFree(&image);
-        
+
         free(fileName);
         free(newFileName);
     }
@@ -196,6 +209,8 @@ int main(int argc, char *argv[])
 
     int nFrames = CheckNbFrames(opti ? argv[3] : argv[2]);
 
+    // char *nomImagettePath = malloc(strlen(nomImagette) + 5 + 6);
+    // sprintf(nomImagettePath, "%s%s", "Suivi/Bike/", nomImagette);
     char *nomImagettePath = malloc(strlen(nomImagette) + 6);
     sprintf(nomImagettePath, "%s%s", "Suivi/", nomImagette);
 

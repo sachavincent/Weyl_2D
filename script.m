@@ -68,35 +68,6 @@ subplot(132);
 imshow(imread("Stereo/tsukubadroite.pgm"));
 subplot(133); imshow(stereoDisp);
 
-stereoDisp = medfilt2(stereoDisp);
-q3 = quantile(stereoDisp(:), 0.9);
-
-stereoDisp_v3 = stereoDisp / q3;
-stereoDisp_v3(stereoDisp_v3 > 1) = 1;
-stereoDisp_v3 = lerp(0,255,stereoDisp_v3);
-
-figure;colormap gray; 
-imshow(uint8(stereoDisp_v3));
-
-q1 = quantile(stereoDisp(:), 0.95);
-
-stereoDisp_v2 = stereoDisp / q1;
-stereoDisp_v2 = stereoDisp_v2 * 255;
-stereoDisp_v2(stereoDisp_v2 > 255) = 255;
-stereoDisp_v2 = abs(stereoDisp_v2 - 255);
-
-figure;colormap gray;
-imshow(uint8(stereoDisp_v2));
-
-
-stereoDisp_v4 = stereoDisp ./ max(stereoDisp);
-stereoDisp_v4 = lerp(0,255,stereoDisp_v4);
-
-figure;colormap gray; 
-imshow(uint8(stereoDisp_v4));
-
-
-
 
 
 D1 = loadMXFile("Stereo/disparity_11.mx");

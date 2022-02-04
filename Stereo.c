@@ -1,8 +1,3 @@
-#include <assert.h>
-#include <sys\timeb.h>
-#include <errno.h>
-#include <limits.h>
-
 #include "utils.c"
 
 char *directory = "Stereo";
@@ -29,41 +24,6 @@ Matrix DifferenceMatrices(Matrix A, Matrix B)
     return diff;
 }
 
-/**
- * @brief Get neighborhood pixels in Matrix centered on (xC, yC) of size neigh*neigh
- *
- * @param M Matrix of pixels
- * @param xC center of neighborhood
- * @param yC center of neighborhood
- * @param neigh size of neighborhood (must be odd)
- * @return Matrix containing the neighborhood
- */
-Matrix GetNeighborhood(Matrix M, int xC, int yC, int neigh)
-{
-    assert(neigh % 2 == 1);
-    assert(neigh > 0);
-
-    int **m = MatGetInt(M);
-
-    int halfNeigh = neigh / 2;
-
-    // printf("%d %d\n", m[xC][yC], halfNeigh);
-    Matrix res = MatAlloc(Int, neigh, neigh);
-    int **mRes = MatGetInt(res);
-#pragma omp for
-    for (int x = xC - halfNeigh; x <= xC + halfNeigh; x++)
-    {
-        for (int y = yC - halfNeigh; y <= yC + halfNeigh; y++)
-        {
-            int pixel = m[x][y];
-
-            mRes[x - (xC - halfNeigh)][y - (yC - halfNeigh)] = pixel;
-        }
-    }
-
-#pragma omp barrier
-    return res;
-}
 /**
  * @brief Stereovision
  *
