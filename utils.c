@@ -1,6 +1,8 @@
 
 #include "utils.h"
 
+int DEBUG = 0;
+
 Image TransformMatrixToImage(Matrix *m)
 {
     int height = MatNbRow(*m);
@@ -42,13 +44,16 @@ Matrix TransformImageToMatrix(Image *i)
 #pragma omp barrier
 
     if (DEBUG)
-        printf("Converted Image Success\n");
+        printf("Converted Image Successfully\n");
 
     return m;
 }
 Matrix ReadMatrixFromPGM(char *imageName)
 {
     Image image = ImRead(imageName);
+    if (image == NULL)
+        return NULL;
+
     Matrix mat = TransformImageToMatrix(&image);
     ImFree(&image);
 
@@ -87,7 +92,57 @@ Matrix GetIntegralImage(Matrix m)
     return mm;
 }
 
-Matrix GetSlicedDifferenceMatrix(Matrix A, int y, int x, Matrix B)
+/**
+ * @brief Slice matrix
+ *
+ * @param M original matrix
+ * @param x top left x coordinate
+ * @param y top left y coordinate
+ * @param width width of slice
+ * @param height height of slice
+ *
+ * @return result
+ */
+Matrix SliceMatrix(Matrix M, int x, int y, int width, int height)
+{
+    assert(M != NULL);
+
+    assert(width > 0 && height > 0);
+    int heightM = MatNbRow(M);
+    int widthM = MatNbCol(M);
+
+    assert(widthM > 0 && heightM > 0);
+    assert(x >= 0 && y >= 0 && x < widthM && y < heightM);
+
+    int **values = MatGetInt(M);
+    Matrix sliced = MatAlloc(Int, height, width);
+    int **slicedValues = MatGetInt(sliced);
+
+#pragma omp for
+    for (int i = y; i < y + height; i++)
+    {
+        for (int j = x; j < x + width; j++)
+        {
+            slicedValues[i - y][j - x] = values[i][j];
+        }
+    }
+#pragma omp barrier
+
+    if (DEBUG)
+        printf("Successfully sliced matrix!\n");
+    return sliced;
+}
+/**
+ * @brief Get the Sliced Difference Matrix object
+ *
+ * @param A whole matrix
+ * @param x top left x coordinate
+ * @param y top left y coordinate
+ * @param B smaller matrix
+ *
+ * @return difference between A and B at (x, y)
+ */
+Matrix GetSlicedDifferenceMatrix(Matrix A, int x, int y, Matrix B)
 {
     int h = MatNbRow(B);
     int w = MatNbCol(B);
@@ -97,12 +152,11 @@ Matrix GetSlicedDifferenceMatrix(Matrix A, int y, int x, Matrix B)
     int **m = MatGetInt(sliced);
 
 #pragma omp for
-    for (int i = x; i < x + h; i++)
+    for (int i = y; i < y + h; i++)
     {
-        for (int j = y; j < y + w; j++)
+        for (int j = x; j < x + w; j++)
         {
-            // printf("F1: %d %d\n", i, j);
-            m[i - x][j - y] = a[i][j] - b[i - x][j - y];
+            m[i - y][j - x] = a[i][j] - b[i - y][j - x];
         }
     }
 #pragma omp barrier
@@ -209,6 +263,7 @@ int WeylNorm(Matrix m)
     MatFree(&integralImage);
     return max(max(pi1, pi2), max(pi4, pi3));
 }
+
 int *WeylMinMaxOpti(int pi, int c)
 {
     int *minMax = (int *)malloc(sizeof(int) * 2);
@@ -216,6 +271,7 @@ int *WeylMinMaxOpti(int pi, int c)
     minMax[1] = min(c, c - pi);
     return minMax;
 }
+
 Matrix GetIntegralImageOpti(Matrix m, int *maxPerRow, int *minPerRow)
 {
     int height = MatNbRow(m);

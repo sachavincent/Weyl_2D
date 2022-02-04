@@ -1,4 +1,7 @@
 
+#ifndef __utils_h_
+#define __utils_h_
+
 #include <omp.h>
 #include <assert.h>
 #include <stdio.h>
@@ -14,13 +17,10 @@
 #include <limits.h>
 #include "limace.h"
 
-#ifndef __utils_h_
-#define __utils_h_
-
 #define min(x, M) ((x) >= M ? M : x)
 #define max(x, M) ((x) < M ? M : x)
 
-int DEBUG = 0;
+extern int DEBUG;
 
 extern Image TransformMatrixToImage(Matrix *m);
 
@@ -54,5 +54,18 @@ extern int WeylNormOpti(Matrix m);
  * @return Matrix containing the neighborhood
  */
 extern Matrix GetNeighborhood(Matrix M, int xC, int yC, int neigh);
+
+/**
+ * @brief Slice matrix
+ *
+ * @param M original matrix
+ * @param x top left x coordinate
+ * @param y top left y coordinate
+ * @param width width of slice
+ * @param height height of slice
+ *
+ * @return result
+ */
+Matrix SliceMatrix(Matrix M, int x, int y, int width, int height);
 
 #endif

@@ -1,4 +1,4 @@
-#include "utils.c"
+#include "utils.h"
 
 char *directory = "Stereo";
 
@@ -115,7 +115,6 @@ Matrix Stereo(Matrix Im1, Matrix Im2, int neigh, int opti, int bidirectional)
 
     return disparityMap;
 }
-
 
 int CheckNeigh(char *neighArg)
 {
@@ -277,15 +276,10 @@ int main(int argc, char *argv[])
     int time_taken_global = (int)(1000.0 * (endGlobal.time - startGlobal.time) + (endGlobal.millitm - startGlobal.millitm));
     if (bidirectional)
     {
-        if (opti)
-            printf("Stereo (optimized) successful:\n\tNeighborhood=%dx%d\n\tMatrix: [%d %d]\n\tTime taken: %d ms\n\t\tStereo L->R: %d ms\n\t\tStereo R->L: %d ms\n\tSaved at: %s\n", neigh, neigh, MatNbRow(stereoResult), MatNbCol(stereoResult), time_taken_global, time_taken, time_takenB, finalPath);
-        else
-            printf("Stereo successful:\n\tNeighborhood=%dx%d\n\tMatrix: [%d %d]\n\tTime taken: %d ms\n\t\tStereo L->R: %d ms\n\t\tStereo R->L: %d ms\n\tSaved at: %s\n", neigh, neigh, MatNbRow(stereoResult), MatNbCol(stereoResult), time_taken_global, time_taken, time_takenB, finalPath);
+        printf("Stereo%ssuccessful:\n\tNeighborhood=%dx%d\n\tMatrix: [%d %d]\n\tTime taken: %d ms\n\t\tStereo L->R: %d ms\n\t\tStereo R->L: %d ms\n\tSaved at: %s\n", opti ? " (optimized) " : " ", neigh, neigh, MatNbRow(stereoResult), MatNbCol(stereoResult), time_taken_global, time_taken, time_takenB, finalPath);
     }
-    else if (opti)
-        printf("Stereo (optimized) successful:\n\tNeighborhood=%dx%d\n\tMatrix: [%d %d]\n\tTime taken: %d ms\n\t\tStereo L->R: %d ms\n\tSaved at: %s\n", neigh, neigh, MatNbRow(stereoResult), MatNbCol(stereoResult), time_taken_global, time_taken, finalPath);
     else
-        printf("Stereo successful:\n\tNeighborhood=%dx%d\n\tMatrix: [%d %d]\n\tTime taken: %d ms\n\t\tStereo L->R: %d ms\n\tSaved at: %s\n", neigh, neigh, MatNbRow(stereoResult), MatNbCol(stereoResult), time_taken_global, time_taken, finalPath);
+        printf("Stereo%ssuccessful:\n\tNeighborhood=%dx%d\n\tMatrix: [%d %d]\n\tTime taken: %d ms\n\t\tStereo L->R: %d ms\n\tSaved at: %s\n", opti ? " (optimized) " : " ", neigh, neigh, MatNbRow(stereoResult), MatNbCol(stereoResult), time_taken_global, time_taken, finalPath);
 
     free(pathLeft);
     free(pathRight);

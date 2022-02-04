@@ -21,32 +21,29 @@ RM=rm -f
 
 # --> ci-dessous, ajoutez a la suite les noms des fichiers objets 
 # separes par un espace
-OBJECTS=limace.o main.o Stereo.o Suivi.o Utils.o
+OBJECTS=limace.o utils.o Stereo.o Track.o 
 
 # --> ci-dessous, ajoutez a la suite les noms des fichiers executables 
 # separes par un espace
-EXE=main Stereo Suivi 
+EXE=Stereo Track 
 
 # Ne modifiez pas cette partie
 .PHONY: all
 all: $(EXE)
 
 # Dependances non implicites des executables
-OBJ=limace.o
-main: $(OBJ) main.o
+OBJ=limace.o utils.o
 stereo: $(OBJ) Stereo.o
-suivi: $(OBJ) Suivi.o
-utils: $(OBJ) Utils.o
+track: $(OBJ) Track.o
 # --> ajoutez ici une ligne par programme selon le meme modele
 
 
 # Dependances non implicites des objets
-HEAD=limace.h
+HEAD=limace.h utils.h
 limace.o: $(HEAD)
-main.o: $(HEAD)
-stereo.o: $(HEAD)
-suivi.o: $(HEAD)
 utils.o: $(HEAD)
+stereo.o: $(HEAD)
+track.o: $(HEAD)
 # --> ajoutez ici une ligne par programme selon le meme modele
 
 
