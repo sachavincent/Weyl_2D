@@ -48,4 +48,10 @@ for i = 1:nbFrames
 endfor
 close(resVid);
 
-disp(["Convertion successful!"]);
+disp(["Conversion successful!"]);
+
+figure;
+for i=1:71
+  imshow(['Suivi\University\frames\frame_', int2str(i), '.jpg']);
+  drawnow
+endfor

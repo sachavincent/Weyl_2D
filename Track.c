@@ -145,8 +145,6 @@ int Track(char *dataset, int x, int y, const int width, const int height, int nb
             {
                 return 1;
             }
-
-            MatWriteAsc(boundingBox, "tb.mx");
         }
         int minFound = INT_MAX;
         // Find best match on all the other frames

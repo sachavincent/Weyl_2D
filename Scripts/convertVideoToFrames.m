@@ -1,6 +1,10 @@
 function convertVideoToFrames(videoName, directory, nbFrames);
 pkg load video;
 
+if nargin < 2
+  disp("directory needs to be specified");
+  return;
+endif  
 if nargin < 3
   nbFrames = intmax;
 endif
@@ -16,4 +20,4 @@ endwhile
 
 close(vid);
 
-disp(["Convertion successful!"]);
+disp(["Conversion successful!"]);

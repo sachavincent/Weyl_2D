@@ -1,13 +1,17 @@
-function convertDatasetToPGM(directory, del);
+function convertDatasetToPGM(directory, del);  
+pkg load mapping;
+
 listFiles = dir(directory);
-for i=1:rows(listFiles)-2
-  file = listFiles(i+2);
-  fln = strcat(file.folder, '\', file.name);
-  
-  saveToPGM(strcat(file.folder, '\', file.name), strcat(file.folder, '\', "frame_", int2str(i))); 
+sortedList = extractfield(listFiles, 'name')';
+sortedList = sort_nat(sortedList)(3:end);
+for i=1:rows(sortedList)
+  fileName = cell2mat(sortedList(i));
+  fln = strcat(directory, '/', fileName);
+  saveToPGM(fln, strcat(directory, '/', "frame_", int2str(i))); 
   
   if del
     delete(fln);
   endif
 endfor
-disp(["Convertion successful!"]);
+
+disp(["Conversion successful!"]);
