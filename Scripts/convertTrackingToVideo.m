@@ -49,9 +49,3 @@ endfor
 close(resVid);
 
 disp(["Conversion successful!"]);
-
-figure;
-for i=1:71
-  imshow(['Suivi\University\frames\frame_', int2str(i), '.jpg']);
-  drawnow
-endfor
