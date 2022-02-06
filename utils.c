@@ -159,6 +159,7 @@ Matrix GetSlicedDifferenceMatrix(Matrix A, int x, int y, Matrix B)
             m[i - y][j - x] = a[i][j] - b[i - y][j - x];
         }
     }
+
 #pragma omp barrier
     return sliced;
 }

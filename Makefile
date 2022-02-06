@@ -21,11 +21,11 @@ RM=rm -f
 
 # --> ci-dessous, ajoutez a la suite les noms des fichiers objets 
 # separes par un espace
-OBJECTS=limace.o utils.o Stereo.o Track.o 
+OBJECTS=limace.o utils.o Stereo.o Track.o FindBestMatch.o
 
 # --> ci-dessous, ajoutez a la suite les noms des fichiers executables 
 # separes par un espace
-EXE=Stereo Track 
+EXE=Stereo Track FindBestMatch
 
 # Ne modifiez pas cette partie
 .PHONY: all
@@ -35,6 +35,7 @@ all: $(EXE)
 OBJ=limace.o utils.o
 stereo: $(OBJ) Stereo.o
 track: $(OBJ) Track.o
+findbestmatch: $(OBJ) FindBestMatch.o
 # --> ajoutez ici une ligne par programme selon le meme modele
 
 
@@ -44,6 +45,7 @@ limace.o: $(HEAD)
 utils.o: $(HEAD)
 stereo.o: $(HEAD)
 track.o: $(HEAD)
+findbestmatch.o: $(HEAD)
 # --> ajoutez ici une ligne par programme selon le meme modele
 
 

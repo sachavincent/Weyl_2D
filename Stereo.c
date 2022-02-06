@@ -146,9 +146,10 @@ int CheckNeigh(char *neighArg)
 int main(int argc, char *argv[])
 {
     int c;
-    const char *short_opt = "b";
+    const char *short_opt = "";
     struct option long_opt[] = {
-        {"opti", no_argument, NULL, 'o'}};
+        {"opti", no_argument, NULL, 'o'},
+        {"bidirectional", no_argument, NULL, 'b'}};
 
     int opti = 0;
     int bidirectional = 0;
@@ -186,13 +187,12 @@ int main(int argc, char *argv[])
 
     struct timeb start, end, startGlobal, endGlobal;
 
-    ftime(&startGlobal);
     char *imageLeft = argv[1 + opti + bidirectional];
     char *imageRight = argv[2 + opti + bidirectional];
 
     char *pathLeft = malloc(strlen(imageLeft) + strlen(directory) + 2);
     sprintf(pathLeft, "%s%s%s", directory, "/", imageLeft);
-    char *pathRight = malloc(strlen(imageLeft) + strlen(directory) + 2);
+    char *pathRight = malloc(strlen(imageRight) + strlen(directory) + 2);
     sprintf(pathRight, "%s%s%s", directory, "/", imageRight);
 
     if (DEBUG)
@@ -204,9 +204,12 @@ int main(int argc, char *argv[])
     Matrix matImLeft = ReadMatrixFromPGM(pathLeft);
     Matrix matImRight = ReadMatrixFromPGM(pathRight);
 
+    ftime(&startGlobal);
     ftime(&start);
     Matrix stereoResult = Stereo(matImLeft, matImRight, neigh, opti, 0);
     ftime(&end);
+    if (!bidirectional)
+        ftime(&endGlobal);
 
     int time_taken = (int)(1000.0 * (end.time - start.time) + (end.millitm - start.millitm));
     int time_takenB = 0;
@@ -226,6 +229,7 @@ int main(int argc, char *argv[])
         ftime(&start);
         Matrix stereoResult2 = Stereo(matImRight, matImLeft, neigh, opti, 1);
         ftime(&end);
+        ftime(&endGlobal);
         time_takenB = (int)(1000.0 * (end.time - start.time) + (end.millitm - start.millitm));
 
         if (DEBUG)
@@ -272,7 +276,6 @@ int main(int argc, char *argv[])
         sprintf(finalPath, "%s%s%s%s%s", directory, "/disparity_", neighPath, optiPath, ".mx");
     }
 
-    ftime(&endGlobal);
     int time_taken_global = (int)(1000.0 * (endGlobal.time - startGlobal.time) + (endGlobal.millitm - startGlobal.millitm));
     if (bidirectional)
     {
